@@ -1,77 +1,47 @@
 # Elo App
 
-A full-stack application with Next.js frontend and Node.js backend.
+A full-stack Next.js application with TypeScript.
 
 ## Project Structure
 
 ```
 Elo_App/
-├── frontend/          # Next.js React application
-│   ├── app/          # Next.js app directory
-│   ├── package.json
-│   └── ...
-└── backend/          # Node.js HTTP server
-    ├── server.js
-    ├── package.json
-    └── ...
+├── app/
+│   ├── page.tsx          # Home page (frontend)
+│   ├── layout.tsx        # Root layout
+│   └── api/              # API routes (backend)
+│       ├── hello/
+│       │   └── route.ts  # GET /api/hello
+│       └── status/
+│           └── route.ts  # GET /api/status
+├── package.json
+├── tsconfig.json
+└── next.config.js
 ```
 
 ## Getting Started
 
-### Frontend (Next.js)
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install dependencies:
+1. **Install dependencies:**
    ```bash
    npm install
    ```
 
-3. Run the development server:
+2. **Run the development server:**
    ```bash
    npm run dev
    ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+3. **Open your browser:**
+   - Frontend: [http://localhost:3000](http://localhost:3000)
+   - API endpoints:
+     - [http://localhost:3000/api/hello](http://localhost:3000/api/hello)
+     - [http://localhost:3000/api/status](http://localhost:3000/api/status)
 
-### Backend (Node.js)
+## How It Works
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
+Next.js handles **both frontend and backend** in one app:
 
-2. Install dependencies (if any are added):
-   ```bash
-   npm install
-   ```
+- **Frontend**: React components in `app/page.tsx`, `app/layout.tsx`, etc.
+- **Backend**: API routes in `app/api/**/route.ts`
 
-3. Start the server:
-   ```bash
-   npm start
-   ```
-
-4. The backend runs at [http://localhost:3001](http://localhost:3001)
-
-   Available endpoints:
-   - `GET /` - Hello message
-   - `GET /api/status` - Server status
-
-## Running Both Servers
-
-To run both frontend and backend simultaneously, open two terminal windows:
-
-**Terminal 1 (Frontend):**
-```bash
-cd frontend
-npm run dev
-```
-
-**Terminal 2 (Backend):**
-```bash
-cd backend
-npm start
-```
+No need for separate servers - it's all in one!
