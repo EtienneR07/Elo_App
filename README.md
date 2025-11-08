@@ -1,27 +1,77 @@
-# Elo App - Next.js Hello World
+# Elo App
 
-A simple Next.js React application with TypeScript.
-
-## Getting Started
-
-First, install dependencies:
-
-```bash
-npm install
-```
-
-Then, run the development server:
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the Hello World message.
+A full-stack application with Next.js frontend and Node.js backend.
 
 ## Project Structure
 
-- `app/page.tsx` - Main hello world page
-- `app/layout.tsx` - Root layout component
-- `package.json` - Dependencies and scripts
-- `tsconfig.json` - TypeScript configuration
-- `next.config.js` - Next.js configuration
+```
+Elo_App/
+├── frontend/          # Next.js React application
+│   ├── app/          # Next.js app directory
+│   ├── package.json
+│   └── ...
+└── backend/          # Node.js HTTP server
+    ├── server.js
+    ├── package.json
+    └── ...
+```
+
+## Getting Started
+
+### Frontend (Next.js)
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+### Backend (Node.js)
+
+1. Navigate to the backend directory:
+   ```bash
+   cd backend
+   ```
+
+2. Install dependencies (if any are added):
+   ```bash
+   npm install
+   ```
+
+3. Start the server:
+   ```bash
+   npm start
+   ```
+
+4. The backend runs at [http://localhost:3001](http://localhost:3001)
+
+   Available endpoints:
+   - `GET /` - Hello message
+   - `GET /api/status` - Server status
+
+## Running Both Servers
+
+To run both frontend and backend simultaneously, open two terminal windows:
+
+**Terminal 1 (Frontend):**
+```bash
+cd frontend
+npm run dev
+```
+
+**Terminal 2 (Backend):**
+```bash
+cd backend
+npm start
+```
