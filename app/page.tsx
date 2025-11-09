@@ -71,9 +71,9 @@ export default function Home() {
         </>
       ) : (
         <>
-          <h1 style={{ fontSize: '2.5rem' }}>Hello World!</h1>
+          <h1 style={{ fontSize: '2.5rem' }}>Welcome to Elo App</h1>
           <p style={{ color: '#666', fontSize: '1.1rem' }}>
-            You are not logged in
+            Please sign in to continue
           </p>
           <button
             onClick={() => router.push('/login')}
