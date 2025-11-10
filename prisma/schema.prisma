@@ -37,9 +37,12 @@ model User {
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
-  emailVerified DateTime?
   image         String?
   accounts      Account[]
+
+  // Elo App Relations
+  createdLeagues League[]
+  player         Player?
 }
 
 model VerificationToken {
@@ -49,3 +52,96 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+model League {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdById String
+  createdBy   User     @relation(fields: [createdById], references: [id])
+
+  // Game Settings
+  playersPerTeam Int      @default(1) // 1 = 1v1, 2 = 2v2, etc.
+  teamsPerGame   Int      @default(2) // Usually 2 teams, but could support FFA
+  scoreToWin     Int?                 // Optional: points needed to win (e.g., 21 for ping pong)
+  sport          String?              // e.g., "Ping Pong", "Foosball", "Pool"
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seasons     Season[]
+  players     Player[]
+}
+
+model Season {
+  id          String   @id @default(cuid())
+  name        String
+  leagueId    String
+  league      League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  startDate   DateTime @default(now())
+  endDate     DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  games            Game[]
+  seasonPlayers    SeasonPlayer[]
+}
+
+// Join table: tracks players in a season with their ELO
+model SeasonPlayer {
+  id        String   @id @default(cuid())
+  seasonId  String
+  playerId  String
+  season    Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  eloRating Int      @default(1200) // Starting ELO
+  wins      Int      @default(0)
+  losses    Int      @default(0)
+  joinedAt  DateTime @default(now())
+
+  gameResults GameResult[]
+
+  @@unique([seasonId, playerId])
+}
+
+model Game {
+  id          String   @id @default(cuid())
+  seasonId    String
+  season      Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  playedAt    DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  results     GameResult[]
+}
+
+// Results for each player in a game
+model GameResult {
+  id             String       @id @default(cuid())
+  gameId         String
+  seasonPlayerId String
+  game           Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  seasonPlayer   SeasonPlayer @relation(fields: [seasonPlayerId], references: [id], onDelete: Cascade)
+  teamNumber     Int          // 1, 2, 3, etc. - identifies which team this player was on
+  score          Int          // Player's score in this game (or team score if shared)
+  eloChange      Int          // ELO gained/lost
+  isWinner       Boolean      // Did this player win?
+
+  @@unique([gameId, seasonPlayerId])
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  name      String
+  leagueId  String
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId    String?  @unique // Optional: linked to authenticated user
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seasonPlayers SeasonPlayer[]
+
+  @@unique([leagueId, name]) // Unique name per league
+}
+
