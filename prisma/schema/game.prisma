@@ -1,0 +1,23 @@
+model Game {
+  id String   @id @default(cuid())
+  seasonId String
+  season Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  playedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  results     GameResult[]
+}
+
+model GameResult {
+  id String @id @default(cuid())
+  gameId String
+  seasonPlayerId String
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  seasonPlayer SeasonPlayer @relation(fields: [seasonPlayerId], references: [id], onDelete: Cascade)
+  teamNumber Int
+  score Int
+  eloChange Int
+  isWinner Boolean
+
+  @@unique([gameId, seasonPlayerId])
+}

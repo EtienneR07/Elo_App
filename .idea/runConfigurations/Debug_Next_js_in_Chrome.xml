@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug Next.js in Chrome" type="JavascriptDebugType">
+    <method v="2" />
+    <url>http://localhost:3000</url>
+    <browser url="http://localhost:3000" />
+    <debugger />
+  </configuration>
+</component>

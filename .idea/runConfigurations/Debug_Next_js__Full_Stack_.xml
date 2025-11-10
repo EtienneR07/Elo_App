@@ -1,0 +1,7 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Debug Next.js (Full Stack)" type="CompoundRunConfigurationType">
+    <toRun name="Next.js Dev Server" type="js.build_tools.npm" />
+    <toRun name="Debug Next.js in Chrome" type="JavascriptDebugType" />
+    <method v="2" />
+  </configuration>
+</component>
