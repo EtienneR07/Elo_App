@@ -39,8 +39,6 @@ model User {
   email         String?   @unique
   image         String?
   accounts      Account[]
-
-  // Elo App Relations
   createdLeagues League[]
   player         Player?
 }
