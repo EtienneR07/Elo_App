@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  /* Primary - Sage Green */
+  --color-elo-primary-100: #e8ede0;   /* Very light - backgrounds */
+  --color-elo-primary-500: #8B9E68;   /* Main color - buttons, primary elements */
+  --color-elo-primary-700: #576342;   /* Dark - text, headings */
+  --color-elo-primary-900: #3c4330;   /* Very dark - strong accents */
+
+  /* Accent - Terracotta */
+  --color-elo-accent-100: #f3ebe6;
+  --color-elo-accent-500: #C17B5C;
+  --color-elo-accent-700: #8c523e;
+  --color-elo-accent-900: #5e3b30;
+
+  /* Success - Vibrant Green */
+  --color-elo-success-100: #e3f0dd;
+  --color-elo-success-500: #6B9E5C;
+  --color-elo-success-700: #416238;
+  --color-elo-success-900: #2e4128;
+
+  /* Danger - Earthy Red */
+  --color-elo-danger-100: #f3e8e8;
+  --color-elo-danger-500: #C15C5C;
+  --color-elo-danger-700: #8a3a3a;
+  --color-elo-danger-900: #5f2e2e;
+
+  /* Warning - Golden Amber */
+  --color-elo-warning-100: #f4efe0;
+  --color-elo-warning-500: #D4A65C;
+  --color-elo-warning-700: #955d30;
+  --color-elo-warning-900: #654025;
+}

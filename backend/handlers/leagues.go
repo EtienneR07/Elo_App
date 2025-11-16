@@ -1,23 +1,20 @@
 package handlers
 
 import (
-	"elo-app-backend/models"
+	"backend/models"
+	"backend/services"
+	"errors"
 	"net/http"
-	"time"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
-
-// In-memory league storage (replace with database in production)
-var leagues = make(map[string]*models.League)
 
 type CreateLeagueRequest struct {
 	Name           string `json:"name" binding:"required"`
 	Description    string `json:"description"`
 	PlayersPerTeam int    `json:"playersPerTeam" binding:"required,min=1"`
 	Discipline     string `json:"discipline"`
-	OwnerID        string `json:"ownerId" binding:"required"`
 }
 
 type UpdateLeagueRequest struct {
@@ -27,32 +24,65 @@ type UpdateLeagueRequest struct {
 	Discipline     string `json:"discipline"`
 }
 
-func GetLeagues(c *gin.Context) {
-	result := make([]*models.League, 0, len(leagues))
-	for _, league := range leagues {
-		result = append(result, league)
-	}
-	c.JSON(http.StatusOK, result)
+type LeagueHandler struct {
+	leagueService services.LeagueService
 }
 
-func GetLeague(c *gin.Context) {
-	id := c.Param("id")
-	league, exists := leagues[id]
+func NewLeagueHandler(leagueService services.LeagueService) *LeagueHandler {
+	return &LeagueHandler{leagueService: leagueService}
+}
+
+func (h *LeagueHandler) GetLeagues(c *gin.Context) {
+	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	leagues, err := h.leagueService.GetUserLeagues(userID.(uint))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch leagues"})
+		return
+	}
+	c.JSON(http.StatusOK, leagues)
+}
+
+func (h *LeagueHandler) GetLeague(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid league ID"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	league, err := h.leagueService.GetLeagueByID(uint(id), userID.(uint))
+	if err != nil {
+		if errors.Is(err, services.ErrLeagueNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+			return
+		}
+		if errors.Is(err, services.ErrUnauthorized) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to view this league"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch league"})
 		return
 	}
 	c.JSON(http.StatusOK, league)
 }
 
-func CreateLeague(c *gin.Context) {
+func (h *LeagueHandler) CreateLeague(c *gin.Context) {
 	var req CreateLeagueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Verify user is authenticated
 	userID, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
@@ -60,32 +90,31 @@ func CreateLeague(c *gin.Context) {
 	}
 
 	league := &models.League{
-		ID:             uuid.New().String(),
 		Name:           req.Name,
 		Description:    req.Description,
 		PlayersPerTeam: req.PlayersPerTeam,
 		Discipline:     req.Discipline,
-		OwnerID:        userID.(string),
-		CreatedAt:      time.Now(),
-		UpdatedAt:      time.Now(),
+		OwnerID:        userID.(uint),
 	}
 
-	leagues[league.ID] = league
-	c.JSON(http.StatusCreated, league)
-}
-
-func UpdateLeague(c *gin.Context) {
-	id := c.Param("id")
-	league, exists := leagues[id]
-	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+	if err := h.leagueService.CreateLeague(league); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create league"})
 		return
 	}
 
-	// Verify user owns the league
-	userID, _ := c.Get("userID")
-	if league.OwnerID != userID.(string) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to update this league"})
+	c.JSON(http.StatusCreated, league)
+}
+
+func (h *LeagueHandler) UpdateLeague(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid league ID"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
 
@@ -95,39 +124,54 @@ func UpdateLeague(c *gin.Context) {
 		return
 	}
 
-	// Update fields
-	if req.Name != "" {
-		league.Name = req.Name
+	league := &models.League{
+		Name:           req.Name,
+		Description:    req.Description,
+		PlayersPerTeam: req.PlayersPerTeam,
+		Discipline:     req.Discipline,
 	}
-	if req.Description != "" {
-		league.Description = req.Description
+
+	if err := h.leagueService.UpdateLeague(uint(id), userID.(uint), league); err != nil {
+		if errors.Is(err, services.ErrLeagueNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+			return
+		}
+		if errors.Is(err, services.ErrUnauthorized) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to update this league"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update league"})
+		return
 	}
-	if req.PlayersPerTeam > 0 {
-		league.PlayersPerTeam = req.PlayersPerTeam
-	}
-	if req.Discipline != "" {
-		league.Discipline = req.Discipline
-	}
-	league.UpdatedAt = time.Now()
 
 	c.JSON(http.StatusOK, league)
 }
 
-func DeleteLeague(c *gin.Context) {
-	id := c.Param("id")
-	league, exists := leagues[id]
+func (h *LeagueHandler) DeleteLeague(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid league ID"})
+		return
+	}
+
+	userID, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
 		return
 	}
 
-	// Verify user owns the league
-	userID, _ := c.Get("userID")
-	if league.OwnerID != userID.(string) {
-		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this league"})
+	if err := h.leagueService.DeleteLeague(uint(id), userID.(uint)); err != nil {
+		if errors.Is(err, services.ErrLeagueNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
+			return
+		}
+		if errors.Is(err, services.ErrUnauthorized) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this league"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete league"})
 		return
 	}
 
-	delete(leagues, id)
 	c.JSON(http.StatusOK, gin.H{"message": "League deleted successfully"})
 }

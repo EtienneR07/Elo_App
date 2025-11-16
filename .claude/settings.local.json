@@ -14,7 +14,11 @@
       "Bash(go run:*)",
       "Bash(timeout 5 go run:*)",
       "Bash(echo:*)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(mkdir:*)",
+      "Bash(go build:*)",
+      "Bash(go get:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

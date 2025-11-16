@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"elo-app-backend/utils"
+	"backend/utils"
 	"net/http"
 	"strings"
 
@@ -17,7 +17,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Extract token from "Bearer <token>"
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
@@ -33,7 +32,6 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set user info in context
 		c.Set("userID", claims.UserID)
 		c.Set("email", claims.Email)
 		c.Next()

@@ -1,51 +1,47 @@
 package main
 
 import (
-	"elo-app-backend/handlers"
-	"elo-app-backend/middleware"
+	"backend/config"
+	"backend/handlers"
+	"backend/models"
+	"backend/repository"
+	"backend/routes"
+	"backend/services"
 	"log"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
-	// Create Gin router
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
+	config.InitGoogleOAuth()
+
+	if err := config.InitDatabase(); err != nil {
+		log.Fatal("Failed to connect to database:", err)
+	}
+
+	db := config.GetDB()
+	
+	if err := config.AutoMigrate(&models.User{}, &models.League{}, &models.PlayerLeague{}, &models.Game{}, &models.GameParticipant{}); err != nil {
+		log.Fatal("Failed to run migrations:", err)
+	}
+
+	userRepo := repository.NewUserRepository(db)
+	leagueRepo := repository.NewLeagueRepository(db)
+
+	authService := services.NewAuthService(userRepo)
+	leagueService := services.NewLeagueService(leagueRepo)
+
+	authHandler := handlers.NewAuthHandler(authService)
+	leagueHandler := handlers.NewLeagueHandler(leagueService)
+
 	router := gin.Default()
 
-	// Set trusted proxies (for local development, trust none)
-	router.SetTrustedProxies(nil)
-
-	// CORS configuration
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "http://localhost:5174"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
-	config.AllowCredentials = true
-	router.Use(cors.New(config))
-
-	// Public routes (no auth required)
-	auth := router.Group("/api/auth")
-	{
-		auth.POST("/login", handlers.Login)
-		auth.POST("/register", handlers.Register)
-		auth.POST("/logout", handlers.Logout)
-	}
-
-	// Protected routes (auth required)
-	api := router.Group("/api")
-	api.Use(middleware.AuthMiddleware())
-	{
-		// Auth session check
-		api.GET("/auth/session", handlers.GetSession)
-
-		// Leagues
-		api.GET("/leagues", handlers.GetLeagues)
-		api.POST("/leagues", handlers.CreateLeague)
-		api.GET("/leagues/:id", handlers.GetLeague)
-		api.PUT("/leagues/:id", handlers.UpdateLeague)
-		api.DELETE("/leagues/:id", handlers.DeleteLeague)
-	}
+	routes.SetupRoutes(router, authHandler, leagueHandler)
 
 	// Start server
 	log.Println("Server starting on :8080")
