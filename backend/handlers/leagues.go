@@ -1,13 +1,18 @@
 package handlers
 
 import (
-	"backend/models"
-	"backend/services"
+	"backend/entities"
 	"errors"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrLeagueNotFound = errors.New("league not found")
+	ErrUnauthorized   = errors.New("unauthorized")
 )
 
 type CreateLeagueRequest struct {
@@ -25,21 +30,18 @@ type UpdateLeagueRequest struct {
 }
 
 type LeagueHandler struct {
-	leagueService services.LeagueService
+	db *gorm.DB
 }
 
-func NewLeagueHandler(leagueService services.LeagueService) *LeagueHandler {
-	return &LeagueHandler{leagueService: leagueService}
+func NewLeagueHandler(db *gorm.DB) *LeagueHandler {
+	return &LeagueHandler{db: db}
 }
 
 func (h *LeagueHandler) GetLeagues(c *gin.Context) {
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	leagues, err := h.leagueService.GetUserLeagues(userID.(uint))
+	var leagues []entities.League
+	err := h.db.Where("owner_id = ?", userID).Find(&leagues).Error
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch leagues"})
 		return
@@ -54,25 +56,24 @@ func (h *LeagueHandler) GetLeague(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	league, err := h.leagueService.GetLeagueByID(uint(id), userID.(uint))
+	var league entities.League
+	err = h.db.First(&league, uint(id)).Error
 	if err != nil {
-		if errors.Is(err, services.ErrLeagueNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
-			return
-		}
-		if errors.Is(err, services.ErrUnauthorized) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to view this league"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch league"})
 		return
 	}
+
+	if league.OwnerID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to view this league"})
+		return
+	}
+
 	c.JSON(http.StatusOK, league)
 }
 
@@ -83,21 +84,17 @@ func (h *LeagueHandler) CreateLeague(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	league := &models.League{
+	league := &entities.League{
 		Name:           req.Name,
 		Description:    req.Description,
 		PlayersPerTeam: req.PlayersPerTeam,
 		Discipline:     req.Discipline,
-		OwnerID:        userID.(uint),
+		OwnerID:        userID,
 	}
 
-	if err := h.leagueService.CreateLeague(league); err != nil {
+	if err := h.db.Create(league).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create league"})
 		return
 	}
@@ -112,11 +109,7 @@ func (h *LeagueHandler) UpdateLeague(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
 	var req UpdateLeagueRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -124,22 +117,28 @@ func (h *LeagueHandler) UpdateLeague(c *gin.Context) {
 		return
 	}
 
-	league := &models.League{
-		Name:           req.Name,
-		Description:    req.Description,
-		PlayersPerTeam: req.PlayersPerTeam,
-		Discipline:     req.Discipline,
-	}
-
-	if err := h.leagueService.UpdateLeague(uint(id), userID.(uint), league); err != nil {
-		if errors.Is(err, services.ErrLeagueNotFound) {
+	var league entities.League
+	err = h.db.First(&league, uint(id)).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
 			return
 		}
-		if errors.Is(err, services.ErrUnauthorized) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to update this league"})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch league"})
+		return
+	}
+
+	if league.OwnerID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to update this league"})
+		return
+	}
+
+	league.Name = req.Name
+	league.Description = req.Description
+	league.PlayersPerTeam = req.PlayersPerTeam
+	league.Discipline = req.Discipline
+
+	if err := h.db.Save(&league).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update league"})
 		return
 	}
@@ -154,21 +153,25 @@ func (h *LeagueHandler) DeleteLeague(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("userID")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
-		return
-	}
+	userID := c.MustGet("userID").(uint)
 
-	if err := h.leagueService.DeleteLeague(uint(id), userID.(uint)); err != nil {
-		if errors.Is(err, services.ErrLeagueNotFound) {
+	var league entities.League
+	err = h.db.First(&league, uint(id)).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "League not found"})
 			return
 		}
-		if errors.Is(err, services.ErrUnauthorized) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this league"})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch league"})
+		return
+	}
+
+	if league.OwnerID != userID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "You don't have permission to delete this league"})
+		return
+	}
+
+	if err := h.db.Delete(&entities.League{}, uint(id)).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete league"})
 		return
 	}

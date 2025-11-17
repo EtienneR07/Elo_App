@@ -2,11 +2,9 @@ package main
 
 import (
 	"backend/config"
+	"backend/entities"
 	"backend/handlers"
-	"backend/models"
-	"backend/repository"
 	"backend/routes"
-	"backend/services"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -25,23 +23,18 @@ func main() {
 	}
 
 	db := config.GetDB()
-	
-	if err := config.AutoMigrate(&models.User{}, &models.League{}, &models.PlayerLeague{}, &models.Game{}, &models.GameParticipant{}); err != nil {
+
+	if err := config.AutoMigrate(&entities.User{}, &entities.League{}, &entities.PlayerLeague{}, &entities.Game{}, &entities.GameParticipant{}); err != nil {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
-	userRepo := repository.NewUserRepository(db)
-	leagueRepo := repository.NewLeagueRepository(db)
-
-	authService := services.NewAuthService(userRepo)
-	leagueService := services.NewLeagueService(leagueRepo)
-
-	authHandler := handlers.NewAuthHandler(authService)
-	leagueHandler := handlers.NewLeagueHandler(leagueService)
+	authHandler := handlers.NewAuthHandler(db)
+	leagueHandler := handlers.NewLeagueHandler(db)
+	gameHandler := handlers.NewGameHandler(db)
 
 	router := gin.Default()
 
-	routes.SetupRoutes(router, authHandler, leagueHandler)
+	routes.SetupRoutes(router, authHandler, leagueHandler, gameHandler)
 
 	// Start server
 	log.Println("Server starting on :8080")

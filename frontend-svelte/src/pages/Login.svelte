@@ -3,6 +3,7 @@
   import { navigate } from '$app/navigation';
   import EloButton from "$lib/components/EloButton.svelte";
   import EloTextInput from "$lib/components/EloTextInput.svelte";
+  import EloCard from "$lib/components/EloCard.svelte";
 
   let email = '';
   let password = '';
@@ -48,11 +49,7 @@
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-elo-primary-100 p-4">
-  <div class="max-w-md w-full p-8 bg-white shadow-2xl z-10 rounded-xl">
-    <div>
-      <h2 class="text-center text-3xl font-medium text-elo-primary-700">Log in to Elotify</h2>
-    </div>
-
+  <EloCard label="Log in to Elotify">
     <form class="mt-8 space-y-6" on:submit={handleLogin} novalidate>
       {#if error || validationError}
         <div class="bg-elo-danger-100 border-l-4 border-elo-danger-500 text-elo-danger-700 px-4 py-3 rounded">
@@ -122,5 +119,5 @@
         </a>
       </div>
     </form>
-  </div>
+  </EloCard>
 </div>

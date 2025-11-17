@@ -11,7 +11,7 @@ import (
 	"os"
 
 	"backend/config"
-	"backend/models"
+	"backend/entities"
 	"backend/utils"
 
 	"github.com/gin-gonic/gin"
@@ -77,11 +77,11 @@ func GoogleCallback(ctx *gin.Context) {
 		return
 	}
 
-	var user models.User
+	var user entities.User
 	err = config.GetDB().Where("email = ? AND o_auth_provider = ?", googleUser.Email, "google").First(&user).Error
 
 	if err != nil {
-		user = models.User{
+		user = entities.User{
 			Email:         googleUser.Email,
 			Name:          googleUser.Name,
 			OAuthProvider: "google",

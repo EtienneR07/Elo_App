@@ -1,12 +1,21 @@
 package handlers
 
 import (
-	"backend/models"
-	"backend/services"
+	"backend/entities"
+	"backend/utils"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserExists         = errors.New("user already exists")
+	ErrUserNotFound       = errors.New("user not found")
+	ErrOAuthUser          = errors.New("this account uses OAuth login")
 )
 
 type LoginRequest struct {
@@ -15,8 +24,8 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	Token string       `json:"token"`
-	User  *models.User `json:"user"`
+	Token string         `json:"token"`
+	User  *entities.User `json:"user"`
 }
 
 type RegisterRequest struct {
@@ -26,11 +35,11 @@ type RegisterRequest struct {
 }
 
 type AuthHandler struct {
-	authService services.AuthService
+	db *gorm.DB
 }
 
-func NewAuthHandler(authService services.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+func NewAuthHandler(db *gorm.DB) *AuthHandler {
+	return &AuthHandler{db: db}
 }
 
 func (h *AuthHandler) Login(context *gin.Context) {
@@ -40,23 +49,36 @@ func (h *AuthHandler) Login(context *gin.Context) {
 		return
 	}
 
-	user, token, err := h.authService.Login(req.Email, req.Password)
+	var user entities.User
+	err := h.db.Where("email = ?", req.Email).First(&user).Error
 	if err != nil {
-		if errors.Is(err, services.ErrInvalidCredentials) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			context.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
-			return
-		}
-		if errors.Is(err, services.ErrOAuthUser) {
-			context.JSON(http.StatusUnauthorized, gin.H{"error": "This account uses OAuth login"})
 			return
 		}
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to login"})
 		return
 	}
 
+	if user.Password == nil {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "This account uses OAuth login"})
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(req.Password)); err != nil {
+		context.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	token, err := utils.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
+		return
+	}
+
 	context.JSON(http.StatusOK, LoginResponse{
 		Token: token,
-		User:  user,
+		User:  &user,
 	})
 }
 
@@ -67,9 +89,10 @@ func (h *AuthHandler) GetSession(c *gin.Context) {
 		return
 	}
 
-	user, err := h.authService.GetUserByID(userID.(uint))
+	var user entities.User
+	err := h.db.First(&user, userID.(uint)).Error
 	if err != nil {
-		if errors.Is(err, services.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
@@ -91,13 +114,38 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, token, err := h.authService.Register(req.Email, req.Password, req.Name)
+	var existingUser entities.User
+	err := h.db.Where("email = ?", req.Email).First(&existingUser).Error
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check user"})
+		return
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		if errors.Is(err, services.ErrUserExists) {
-			c.JSON(http.StatusConflict, gin.H{"error": "User already exists"})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	hashedPasswordStr := string(hashedPassword)
+	user := &entities.User{
+		Email:    req.Email,
+		Password: &hashedPasswordStr,
+		Name:     req.Name,
+	}
+
+	if err := h.db.Create(user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
+		return
+	}
+
+	token, err := utils.GenerateToken(user.ID, user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate token"})
 		return
 	}
 

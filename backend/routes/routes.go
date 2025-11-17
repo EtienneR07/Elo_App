@@ -8,8 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, leagueHandler *handlers.LeagueHandler) {
-	// Set trusted proxies (for local development, trust none)
+func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, leagueHandler *handlers.LeagueHandler, gameHandler *handlers.GameHandler) {
 	err := router.SetTrustedProxies(nil)
 
 	if err != nil {
@@ -35,7 +34,7 @@ func SetupRoutes(router *gin.Engine, authHandler *handlers.AuthHandler, leagueHa
 		{
 			protected.GET("/auth/session", authHandler.GetSession)
 
-			RegisterLeagueRoutes(protected, leagueHandler)
+			RegisterLeagueRoutes(protected, leagueHandler, gameHandler)
 		}
 	}
 }

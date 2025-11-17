@@ -3,6 +3,7 @@
   import { navigate } from '$app/navigation';
   import EloTextInput from "$lib/components/EloTextInput.svelte";
   import EloButton from "$lib/components/EloButton.svelte";
+  import EloCard from "$lib/components/EloCard.svelte";
 
   let name = '';
   let email = '';
@@ -39,11 +40,7 @@
 </script>
 
 <div class="min-h-screen flex items-center justify-center bg-elo-primary-100 p-4">
-  <div class="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-    <div>
-      <h2 class="text-center text-3xl font-medium  text-elo-primary-500">Sign up</h2>
-    </div>
-
+  <EloCard label="Sign up">
     <form class="mt-8 space-y-6" on:submit={handleRegister}>
       {#if error}
         <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -90,5 +87,5 @@
         </a>
       </div>
     </form>
-  </div>
+  </EloCard>
 </div>
