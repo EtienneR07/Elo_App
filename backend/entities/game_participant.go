@@ -6,6 +6,12 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	ResultWin  = "win"
+	ResultLoss = "loss"
+	ResultDraw = "draw"
+)
+
 type GameParticipant struct {
 	ID        uint           `gorm:"primaryKey" json:"id"`
 	GameID    uint           `gorm:"not null;index" json:"game_id"`

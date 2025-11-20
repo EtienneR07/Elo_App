@@ -16,6 +16,7 @@ type League struct {
 	End            time.Time      `gorm:"not null" json:"end"`
 	OwnerID        uint           `gorm:"not null;index" json:"owner_id"`
 	Owner          User           `gorm:"foreignKey:OwnerID" json:"owner,omitempty"` // Relationship to User
+	HasDraws       bool           `json:"has_draws"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"` // Soft delete support

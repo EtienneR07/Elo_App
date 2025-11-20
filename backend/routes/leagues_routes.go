@@ -12,7 +12,7 @@ func RegisterLeagueRoutes(rg *gin.RouterGroup, leagueHandler *handlers.LeagueHan
 		leagues.GET("", leagueHandler.GetLeagues)
 		leagues.POST("", leagueHandler.CreateLeague)
 
-		leaguesId := leagues.Group("/:id")
+		leaguesId := leagues.Group("/:leagueId")
 		{
 			leaguesId.GET("", leagueHandler.GetLeague)
 			leaguesId.PUT("", leagueHandler.UpdateLeague)

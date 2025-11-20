@@ -5,6 +5,7 @@ import (
 	"backend/entities"
 	"backend/handlers"
 	"backend/routes"
+	"backend/services"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -28,9 +29,12 @@ func main() {
 		log.Fatal("Failed to run migrations:", err)
 	}
 
+	gameService := services.NewGameService(db)
+	leagueService := services.NewLeagueService(db)
+
 	authHandler := handlers.NewAuthHandler(db)
-	leagueHandler := handlers.NewLeagueHandler(db)
-	gameHandler := handlers.NewGameHandler(db)
+	leagueHandler := handlers.NewLeagueHandler(leagueService)
+	gameHandler := handlers.NewGameHandler(db, gameService, leagueService)
 
 	router := gin.Default()
 
